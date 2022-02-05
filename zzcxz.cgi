@@ -140,15 +140,16 @@ local not_found = function()
 end
 
 local function parse_directive(line, directives)
-	local directive, args = line:match "^#([A-Z]+)%s*(.-)\n?$"
+	local directive, args = line:match "^#([A-Za-z]+)%s*(.-)\n?$"
+	directive = directive and directive:lower()
 	if not directive then
 		return
-	elseif directive == "BACKLINK" then
+	elseif directive == "backlink" then
 		local page, action = args:match "^(%w%w%w%w%w)%s+(.+)$"
 		if not page then return end
 		directives.backlinks = directives.backlinks or {}
 		table.insert(directives.backlinks, {page = page, action = action})
-	elseif directive == "DEADEND" then
+	elseif directive == "deadend" then
 		directives.deadend = true
 	else
 		return
