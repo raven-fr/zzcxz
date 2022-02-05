@@ -1,0 +1,446 @@
+#!/usr/bin/env lua
+-- this software is licensed under the terms of the GNU affero public license
+-- v3 or later. view LICENSE.txt for more information.
+
+-- if you host your own instance, please change the email address in the about
+-- page and clearly distinguish your instance from https://zzcxz.citrons.xyz.
+
+local env = os.getenv
+
+local f = io.open("/dev/urandom", 'r')
+local e = f and f:read(1)
+if f then f:close() end
+math.randomseed(os.time() + string.byte(e))
+
+local function url_encode(str)
+	return (str:gsub("([^A-Za-z0-9%_%.%-%~])", function(v)
+		return string.upper(string.format("%%%02x", string.byte(v)))
+	end))
+end
+
+local esc_sequences = {
+	["<"] = "&lt;",
+	[">"] = "&gt;",
+	['"'] = "&quot;"
+}
+local function html_encode(x)
+	local escaped = tostring(x)
+	escaped = escaped:gsub("&", "&amp;")
+
+	for char,esc in pairs(esc_sequences) do
+		escaped = string.gsub(escaped, char, esc)
+	end
+	return escaped
+end
+
+local function parse_qs(str)
+	local function decode(str, path)
+		local str = str
+		if not path then
+			str = str:gsub('+', ' ')
+		end
+		return (str:gsub("%%(%x%x)", function(c)
+				return string.char(tonumber(c, 16))
+		end))
+	end
+
+	local values = {}
+	for key,val in str:gmatch(string.format('([^%q=]+)(=*[^%q=]*)', '&', '&')) do
+		local key = decode(key)
+		local keys = {}
+		key = key:gsub('%[([^%]]*)%]', function(v)
+				-- extract keys between balanced brackets
+				if string.find(v, "^-?%d+$") then
+					v = tonumber(v)
+				else
+					v = decode(v)
+				end
+				table.insert(keys, v)
+				return "="
+		end)
+		key = key:gsub('=+.*$', "")
+		key = key:gsub('%s', "_") -- remove spaces in parameter name
+		val = val:gsub('^=+', "")
+
+		if not values[key] then
+			values[key] = {}
+		end
+		if #keys > 0 and type(values[key]) ~= 'table' then
+			values[key] = {}
+		elseif #keys == 0 and type(values[key]) == 'table' then
+			values[key] = decode(val)
+		end
+
+		local t = values[key]
+		for i,k in ipairs(keys) do
+			if type(t) ~= 'table' then
+				t = {}
+			end
+			if k == "" then
+				k = #t+1
+			end
+			if not t[k] then
+				t[k] = {}
+			end
+			if i == #keys then
+				t[k] = decode(val)
+			end
+			t = t[k]
+		end
+	end
+	return values
+end
+
+local function redirect(to)
+	return "", {
+		status = '303 see other',
+		headers = { location = to },
+	}
+end
+
+local function template(str)
+	return function (t)
+		return (str:gsub("$([A-Za-z][A-Za-z0-9]*)", function(v)
+			return t[v] or ""
+		end))
+	end
+end
+
+local base = template [[
+<!doctype html>
+<html>
+	<head>
+		<link rel="stylesheet" href="/static/amethyst.css" />
+		<meta charset="utf-8"/>
+		<title>zzcxz: $title</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+	</head>
+	<body>
+		<h1>zzcxz</h1>
+		<main>$content</main>
+		<footer>
+			<div id="about-links">
+				<p><a href="/about">help</a></p>
+				<p><a href="https://citrons.xyz/git/zzcxz.git/about">
+					source code
+				</a></p>
+				<p><a href="https://citrons.xyz">citrons.xyz</a></p>
+			</div>
+		</footer>
+	</body>
+</html>
+]]
+
+local not_found = function() 
+	return
+		base {
+			title = "not found",
+			content = "the content requested was not found.",
+		}, { status = '404 not found' }
+end
+
+local function parse_directive(line, directives)
+	local directive, args = line:match "^#([A-Z]+)%s*(.-)\n?$"
+	if not directive then
+		return
+	elseif directive == "BACKLINK" then
+		local page, action = args:match "^(%w%w%w%w%w)%s+(.+)$"
+		if not page then return end
+		directives.backlinks = directives.backlinks or {}
+		table.insert(directives.backlinks, {page = page, action = action})
+	elseif directive == "DEADEND" then
+		directives.deadend = true
+	else
+		return
+	end
+	return true
+end
+
+local function convert_markup(m)
+	local result = {}
+	local directives = {}
+	local code_block = false
+	for line in (m..'\n'):gmatch "(.-)\n" do
+		line = html_encode(line)
+		if not code_block then
+			if line:match "^%s*$" then
+				goto continue
+			end
+			if line:sub(1,1) == '#' and
+					parse_directive(line, directives) then
+				goto continue
+			end
+			if line:sub(1,1) == ' ' then
+				table.insert(result, '<pre><code>')
+				code_block = true
+			else
+				line = line:gsub("%[(.-)%]",
+					function(s)
+						return ('<span class="important">%s</span>'):format(s)
+					end
+				)
+				table.insert(result, ('<p>%s</p>'):format(line))
+			end
+		end
+		if code_block then
+			if line:sub(1,1) == ' ' then
+				table.insert(result, line .. '\n') 
+			else
+				table.insert(result, '</code></pre>')
+				code_block = false
+			end
+		end
+		::continue::
+	end
+	if code_block then
+		table.insert(result, '</code></pre>')
+		code_block = false
+	end
+	return table.concat(result), directives
+end
+
+local function parse_page(s)
+	local page = {}
+	page.title = s:match "^(.-)\n"
+	page.actions = {}
+	local content = {}
+	for line in (s..'\n'):gmatch "(.-\n)" do
+		if line:sub(1,1) == '\t' then
+			table.insert(content, line:sub(2))
+		else
+			local target, action = line:match "^(%w%w%w%w%w):(.-)\n$"
+			if action then
+				table.insert(page.actions, {action = action, target = target})
+			end
+		end
+	end
+	page.content = table.concat(content)
+
+	return page
+end
+
+local function load_page(p, raw)
+	if not p:match("^%w%w%w%w%w$") then return nil end
+	local f, bee = io.open('content/'..p)
+	if not f then return nil end
+	local s = f:read "a"
+	f:close()
+	if not s then return nil end
+	if raw then return s end
+	return parse_page(s)
+end
+
+local function new_action(page, action, result)
+	local new_name = {}
+	for i=1,5 do
+		table.insert(new_name, string.char(string.byte 'a' + math.random(0,25)))
+	end
+	new_name = table.concat(new_name)
+	assert(not io.open('content/'..new_name, 'r'), "page already exists!")
+
+	local new = assert(io.open('content/'..new_name, 'w'))
+	local old = assert(io.open('content/'..page, 'a'))
+
+	action = action:gsub('\n', ' ')
+	assert(new:write(action..'\n'))
+	for line in (result..'\n'):gmatch "(.-\n)" do
+		assert(new:write('\t' .. line))
+	end
+	assert(old:write(('%s:%s\n'):format(new_name, action)))
+
+	local _, directives = convert_markup(result)
+	if directives.backlinks then
+		for _,d in ipairs(directives.backlinks) do
+			assert(new:write(('%s:%s\n'):format(d.page, d.action)))
+		end
+	end
+
+	new:close()
+	old:close()
+
+	return new_name
+end
+
+local map = {}
+
+local page_template = template [[
+	<h2>$title</h2>
+	$content
+	<ul class="actions">
+	$actions
+	</ul>
+]]
+map["^/g/(%w%w%w%w%w)/?$"] = function(p)
+	local page = load_page(p)
+	if not page then return not_found() end
+	local _, directives = convert_markup(page.content)
+
+	if env "REQUEST_METHOD" ~= "POST" then
+		local actions = {}
+		for _,a in ipairs(page.actions) do
+			table.insert(actions,
+				('<li><a href="%s">%s</a></li>'):format(
+					html_encode(a.target), html_encode(a.action)))
+		end
+		if not directives.deadend then
+			table.insert(actions,
+				([[
+					<li><a class="important" href="%s/act#what">%s</a></li>
+				]]):format(p, #page.actions == 0 and
+					"do something..." or "do something else...")
+			)
+		end
+
+		return base {
+			title = html_encode(page.title),
+			content = page_template {
+				title = html_encode(page.title),
+				content = convert_markup(page.content),
+				actions = table.concat(actions),
+			},
+		}
+	else
+		if directives.deadend then
+			return base {
+				title = "error",
+				content = "forbidden",
+			}, { status = '403 forbidden' }
+		end
+
+		local form = parse_qs(io.read "a")
+
+		form.wyd = form.wyd or "something"
+		form.happens = form.happens or "something"
+		if utf8.len(form.wyd) > 150 then form.wyd = "something" end
+		if utf8.len(form.happens) > 10000 then form.wyd = "something" end
+
+		local new = new_action(p, form.wyd, form.happens)
+		return redirect("/g/"..new)
+	end
+end
+
+local edit_template = template [[
+	$content
+	<hr id="what"/>
+	$preview
+	<form method="POST">
+		<p>
+			<a href="/about#rules">READ THIS</a> before touching anything.</a>
+		</p>
+		<h2>what do you do?</h2>
+		<input
+			type="text"
+			id="wyd" name="wyd"
+			value="$title"
+			maxlength="150" required
+		/>
+		<h2>what happens next?</h2>
+		<textarea
+			id="happens" name="happens"
+			maxlength="10000" required
+		>$editing</textarea>
+		<div class="buttons">
+			<a href="../$page">cancel</a>
+			<input type="submit" formaction="act#what" value="preview" />
+			$submit
+		</div>
+	</form>
+]]
+local preview_template = template [[
+	<h2>$title</h2>
+	$content
+	<hr />
+]]
+local submit_template = template [[
+	<input type="submit" formaction="/g/$page" value="submit" />
+]]
+map["^/g/(%w%w%w%w%w)/act$"] = function(p)
+	local page = load_page(p)
+	if not page then return not_found() end
+
+	local _, directives = convert_markup(page.content)
+	if directives.deadend then return not_found() end
+
+	if env "REQUEST_METHOD" ~= "POST" then
+		return base {
+			title = "do something new",
+			content = edit_template {
+				page = p,
+				content = convert_markup(page.content),
+			},
+		}
+	else
+		local form = parse_qs(io.read "a")
+		form.wyd = form.wyd or "something"
+		form.happens = form.happens or "something"
+		
+		return base {
+			title = "do something new",
+			content = edit_template {
+				page = p,
+				content = convert_markup(page.content),
+				preview = preview_template {
+					title = html_encode(form.wyd),
+					content = convert_markup(form.happens),
+				},
+				title = html_encode(form.wyd),
+				editing = html_encode(form.happens),
+				submit = submit_template { page = p },
+			},
+		}
+	end
+end
+
+map["^/g/(%w%w%w%w%w)/raw$"] = function(p)
+	local page = load_page(p, true)
+	if not page then return not_found() end
+
+	return page, { content_type = 'text/plain' }
+end
+
+map["^/about/?$"] = function()
+	local f = assert(io.open("about.html", 'r'))
+	local h = assert(f:read 'a')
+	f:close()
+
+	return h
+end
+
+local function main()
+	if env "PATH_INFO" == "/" then
+		return redirect "/g/zzcxz"
+	end
+
+	for k,v in pairs(map) do
+		local m = {(env "PATH_INFO"):match(k)}
+		if m[1] then
+			return v(table.unpack(m))
+		end
+	end
+	return not_found()
+end
+
+local ok, content, resp = pcall(main)
+if not ok or type(content) ~= 'string' then
+	io.stderr:write(content..'\n')
+
+	content = base {
+		title = "internal error",
+		content = "an internal error occurred."
+	}
+	resp = { status = '500 internal server error' }
+end
+
+resp = resp or {}
+resp.content_type = resp.content_type or 'text/html'
+resp.status = resp.status or '200 OK'
+resp.headers = resp.headers or {}
+resp.headers['content-type'] = resp.content_type
+
+print(resp.status)
+for k,v in pairs(resp.headers) do
+	print(("%s: %s"):format(k, v))
+end
+
+print ""
+io.write(content)
