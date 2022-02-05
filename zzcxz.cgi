@@ -144,13 +144,10 @@ local function parse_directive(line, directives)
 	directive = directive and directive:lower()
 	if not directive then
 		return
-	elseif directive == "backlink" then
-		local page, action = args:match "^(%w%w%w%w%w)%s+(.+)$"
-		if not page then return end
-		directives.backlinks = directives.backlinks or {}
-		table.insert(directives.backlinks, {page = page, action = action})
-	elseif directive == "deadend" then
-		directives.deadend = true
+	elseif directive == "pagetitle" then
+		if args:match "^%s*$" then return end
+		if utf8.len(args) > 150 then return end
+		directives.title = args
 	elseif directive == "redirect" then
 		local redirect = args:match "^%s*(%w%w%w%w%w)%s*$"
 		if not redirect then return end
@@ -265,7 +262,7 @@ local function new_action(page, action, result)
 	local new = assert(io.open('content/'..new_name, 'w'))
 
 	action = action:gsub('\n', ' ')
-	assert(new:write(action..'\n'))
+	assert(new:write((directives.title or action)..'\n'))
 	for line in (result..'\n'):gmatch "(.-\n)" do
 		assert(new:write('\t' .. line))
 	end
@@ -399,6 +396,8 @@ map["^/g/(%w%w%w%w%w)/act$"] = function(p)
 		local form = parse_qs(io.read "a")
 		form.wyd = form.wyd or "something"
 		form.happens = form.happens or "something"
+
+		local prev, prev_direct = convert_markup(form.happens)
 		
 		return base {
 			title = "do something new",
@@ -406,8 +405,10 @@ map["^/g/(%w%w%w%w%w)/act$"] = function(p)
 				page = p,
 				content = convert_markup(page.content),
 				preview = preview_template {
-					title = html_encode(form.wyd),
-					content = convert_markup(form.happens),
+					title =
+						prev_direct.title and html_encode(prev_direct.title)
+						or html_encode(form.wyd),
+					content = prev,
 				},
 				title = html_encode(form.wyd),
 				editing = html_encode(form.happens),
