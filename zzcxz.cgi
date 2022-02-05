@@ -271,7 +271,7 @@ local page_template = template [[
 	$actions
 	</ul>
 ]]
-map["^/g/(%w%w%w%w%w)/?$"] = function(p)
+map["^/g/(%w%w%w%w%w)$"] = function(p)
 	local page = load_page(p)
 	if not page then return not_found() end
 	local _, directives = convert_markup(page.content)
@@ -318,6 +318,10 @@ map["^/g/(%w%w%w%w%w)/?$"] = function(p)
 		local new = new_action(p, form.wyd, form.happens)
 		return redirect("/g/"..new)
 	end
+end
+
+map["^/g/(%w%w%w%w%w)/$"] = function(p)
+	return redirect('/g/'..p)
 end
 
 local edit_template = template [[
