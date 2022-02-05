@@ -1,4 +1,4 @@
-#!/usr/bin/env lua
+#!/usr/bin/env lua5.3
 -- this software is licensed under the terms of the GNU affero public license
 -- v3 or later. view LICENSE.txt for more information.
 
