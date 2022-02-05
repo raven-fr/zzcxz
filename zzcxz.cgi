@@ -206,7 +206,7 @@ local function convert_markup(m)
 	if directives.redirect then
 		local r = directives.redirect
 		return
-			('<p class="note">this action will link to <a href=%s>%s</a></p>')
+			('<p class="note">this action will link to <a href="/g/%s">%s</a>.</p>')
 				:format(r, r),
 			directives
 	end
