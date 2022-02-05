@@ -66,13 +66,16 @@
 	type <code>#BACKLINK &lt;room&gt; &lt;action&gt;</code> on its own line to cause the room to link back to an already existing room. replace <code>&lt;action&gt;</code> with the text you desire to appear in the link. <code>#BACKLINK</code> cannot add new actions.
 
 	<li>
+	type <code>#REDIRECT &lt;room&gt;</code> to cause the action to bring you to <code>&lt;room&gt;</code> instead of a new room. like with <code>#BACKLINK</code> replace <code>&lt;room&gt;</code> with the five letters at the end of the url of the desired room.
+
+	<li>
 	type <code>#DEADEND</code> to prevent people from taking additional actions on the page. this is mostly useful in combination with <code>#BACKLINK</code>.
 
 	<li>
 	you can add <code>/raw</code> to the end of the URL of a room to see its markup (on the lines starting with tab) (<a href="/g/zzcxz/raw">example</a>). this feature could also potentially be utilized to implement third-party interfaces.
 
 	</ul>
-	
+
 	<p>if you use special formatting, and you see the literal characters that you intend to use to invoke special formatting, you have an error in your formatting. for instance, you should never see "#BACKLINK" in the preview.</p>
 
 	<p>you can add <code>/raw</code> to the end of the URL of a scene to see its markup (on the lines starting with tab) (<a href="/g/zzcxz/raw">example</a>). this feature can be used to implement third-party interfaces.</p>

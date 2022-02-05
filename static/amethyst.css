@@ -74,6 +74,11 @@ footer {
 	margin-left: 20px;
 }
 
+.note {
+	color: lightgrey;
+	font-style: italic;
+}
+
 hr {
 	border-bottom: 0;
 	border-left: 0;

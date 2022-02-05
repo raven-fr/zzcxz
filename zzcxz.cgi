@@ -151,12 +151,17 @@ local function parse_directive(line, directives)
 		table.insert(directives.backlinks, {page = page, action = action})
 	elseif directive == "deadend" then
 		directives.deadend = true
+	elseif directive == "redirect" then
+		local redirect = args:match "^%s*(%w%w%w%w%w)%s*$"
+		if not redirect then return end
+		directives.redirect = redirect
 	else
 		return
 	end
 	return true
 end
 
+local load_page
 local function convert_markup(m)
 	local result = {}
 	local directives = {}
@@ -197,6 +202,15 @@ local function convert_markup(m)
 		table.insert(result, '</code></pre>')
 		code_block = false
 	end
+
+	if directives.redirect then
+		local r = directives.redirect
+		return
+			('<p class="note">this action will link to <a href=%s>%s</a></p>')
+				:format(r, r),
+			directives
+	end
+
 	return table.concat(result), directives
 end
 
@@ -220,7 +234,7 @@ local function parse_page(s)
 	return page
 end
 
-local function load_page(p, raw)
+function load_page(p, raw)
 	if not p:match("^%w%w%w%w%w$") then return nil end
 	local f, bee = io.open('content/'..p)
 	if not f then return nil end
@@ -232,6 +246,15 @@ local function load_page(p, raw)
 end
 
 local function new_action(page, action, result)
+	local _, directives = convert_markup(result)
+	local old = assert(io.open('content/'..page, 'a'))
+
+	if directives.redirect then
+		assert(old:write(('%s:%s\n'):format(directives.redirect, action)))
+		old:close()
+		return directives.redirect
+	end
+
 	local new_name = {}
 	for i=1,5 do
 		table.insert(new_name, string.char(string.byte 'a' + math.random(0,25)))
@@ -240,7 +263,6 @@ local function new_action(page, action, result)
 	assert(not io.open('content/'..new_name, 'r'), "page already exists!")
 
 	local new = assert(io.open('content/'..new_name, 'w'))
-	local old = assert(io.open('content/'..page, 'a'))
 
 	action = action:gsub('\n', ' ')
 	assert(new:write(action..'\n'))
@@ -249,7 +271,6 @@ local function new_action(page, action, result)
 	end
 	assert(old:write(('%s:%s\n'):format(new_name, action)))
 
-	local _, directives = convert_markup(result)
 	if directives.backlinks then
 		for _,d in ipairs(directives.backlinks) do
 			assert(new:write(('%s:%s\n'):format(d.page, d.action)))
