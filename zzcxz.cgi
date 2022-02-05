@@ -437,7 +437,7 @@ resp.status = resp.status or '200 OK'
 resp.headers = resp.headers or {}
 resp.headers['content-type'] = resp.content_type
 
-print(resp.status)
+print("status: "..resp.status)
 for k,v in pairs(resp.headers) do
 	print(("%s: %s"):format(k, v))
 end
