@@ -120,6 +120,7 @@ local base = template [[
 		<main>$content</main>
 		<footer>
 			<div id="about-links">
+				<p><a href="/">back to start</a></p>
 				<p><a href="/about">help</a></p>
 				<p><a href="https://citrons.xyz/git/zzcxz.git/about">
 					source code
