@@ -164,7 +164,6 @@ local function convert_markup(m)
 	local directives = {}
 	local code_block = false
 	for line in (m..'\n'):gmatch "(.-)\n" do
-		line = html_encode(line)
 		if not code_block then
 			if line:match "^%s*$" then
 				goto continue
@@ -173,6 +172,8 @@ local function convert_markup(m)
 					parse_directive(line, directives) then
 				goto continue
 			end
+
+			line = html_encode(line)
 			if line:sub(1,1) == ' ' then
 				table.insert(result, '<pre><code>')
 				code_block = true
