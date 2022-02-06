@@ -254,12 +254,18 @@ local function new_action(page, action, result)
 		return directives.redirect
 	end
 
+::generate_name::
 	local new_name = {}
 	for i=1,5 do
 		table.insert(new_name, string.char(string.byte 'a' + math.random(0,25)))
 	end
 	new_name = table.concat(new_name)
-	assert(not io.open('content/'..new_name, 'r'), "page already exists!")
+
+	local exists = io.open('content/'..new_name, 'r')
+	if exists then
+		exists:close()
+		goto generate_name
+	end
 
 	local new = assert(io.open('content/'..new_name, 'w'))
 
