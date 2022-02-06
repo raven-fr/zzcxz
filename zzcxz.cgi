@@ -350,7 +350,7 @@ local edit_template = template [[
 	$preview
 	<form method="POST">
 		<p>
-			<a href="/about#rules">READ THIS</a> before touching anything.</a>
+			<a href="/about#rules">READ THIS</a> before touching anything.
 		</p>
 		<h2>what do you do?</h2>
 		<input
