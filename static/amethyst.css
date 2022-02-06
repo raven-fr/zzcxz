@@ -68,10 +68,12 @@ footer {
 #about-links {
 	display: flex;
 	justify-content: flex-end;
+	flex-wrap: wrap;
 }
 
 #about-links > p {
 	margin-left: 20px;
+	white-space: nowrap;
 }
 
 .note {
