@@ -503,6 +503,11 @@ map["^/about/?$"] = function()
 	return assert(io.open("about.html", 'r'))
 end
 
+map["^/robots.txt$"] = function()
+	return assert(io.open("robots.txt", 'r')),
+		{ content_type = 'text/plain' }
+end
+
 local function main()
 	if env "PATH_INFO" == "/" then
 		return redirect "/g/zzcxz"

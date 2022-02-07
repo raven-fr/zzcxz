@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /g/zzcxz
+Disallow: /g/
