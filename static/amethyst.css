@@ -65,13 +65,13 @@ footer {
 	font-style: italic;
 }
 
-#about-links {
+.links {
 	display: flex;
 	justify-content: flex-end;
 	flex-wrap: wrap;
 }
 
-#about-links > p {
+.links > p {
 	margin-left: 20px;
 	white-space: nowrap;
 }
@@ -121,6 +121,12 @@ button, input[type="submit"] {
 	color: black;
 	background-color: #e4ffe4;
 	min-width: 100px;
+}
+
+input[type="file"] {
+	font-size: inherit;
+	font-style: italic;
+	cursor: pointer;
 }
 
 button:active, input[type="submit"]:active {
@@ -248,7 +254,6 @@ grge {
 	font-size: smaller;
 }
 
-
 .important {
 	color: cyan !important;
 }
@@ -256,6 +261,20 @@ grge {
 #wyd {
 	width: 100%;
 	box-sizing: border-box;
+}
+
+#draw-this {
+	font-size: small;
+}
+
+#img-form {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+.illustration {
+	border-radius: 20px;
 }
 
 pre {

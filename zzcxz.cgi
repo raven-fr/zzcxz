@@ -221,8 +221,8 @@ local function parse_page(s)
 	for line in (s..'\n'):gmatch "(.-\n)" do
 		if line:sub(1,1) == '\t' then
 			table.insert(content, line:sub(2))
-		elseif line == "!image" then
-			page.illustrated = true
+		elseif line:match("^!image")  then
+			page.illustration = line:match "^!image%s+(%w+)"
 		else
 			local target, action = line:match "^(%w%w%w%w%w):(.-)\n$"
 			if action then
@@ -326,10 +326,10 @@ map["^/g/(%w%w%w%w%w)$"] = function(p)
 		end
 
 		local illustration, draw_this
-		if page.illustrated then
+		if page.illustration then
 			illustration = ([[
-				<img class="illustration" src="/i/%s.png" />
-			]]):format(p)
+				<img class="illustration" src="/i/%s.%s" />
+			]]):format(p, page.illustration)
 		else
 			draw_this = ([[
 				<p id="draw-this"><a href="%s/illustrate">
@@ -480,6 +480,17 @@ map["^/g/(%w%w%w%w%w)/illustrate"] = function(p)
 	end
 end
 
+map["^/i/(%w%w%w%w%w).(%w+)$"] = function(p, format)
+	local page = load_page(p)
+	if not page or
+			not page.illustration or not page.illustration == format then
+		return not_found()
+	end
+	return
+		assert(io.open(('content/%s.%s'):format(p, format), 'r')),
+		{ content_type = 'image/'..format }
+end
+
 map["^/g/(%w%w%w%w%w)/raw$"] = function(p)
 	local page = load_page(p, true)
 	if not page then return not_found() end
@@ -488,11 +499,7 @@ map["^/g/(%w%w%w%w%w)/raw$"] = function(p)
 end
 
 map["^/about/?$"] = function()
-	local f = assert(io.open("about.html", 'r'))
-	local h = assert(f:read 'a')
-	f:close()
-
-	return h
+	return assert(io.open("about.html", 'r'))
 end
 
 local function main()
@@ -510,7 +517,7 @@ local function main()
 end
 
 local ok, content, resp = pcall(main)
-if not ok or type(content) ~= 'string' then
+if not ok or (type(content) ~= 'string' and type(content) ~= 'userdata') then
 	io.stderr:write(content..'\n')
 
 	content = base {
@@ -532,4 +539,12 @@ for k,v in pairs(resp.headers) do
 end
 
 print ""
-io.write(content)
+if type(content) == 'string' then
+	io.write(content)
+else
+	while 1 do
+		local data = content:read(1024)
+		if not data then break end
+		io.write(data)
+	end
+end
