@@ -331,11 +331,11 @@ map["^/g/(%w%w%w%w%w)$"] = function(p)
 				<img class="illustration" src="/i/%s.%s" />
 			]]):format(p, page.illustration)
 		else
-			draw_this = ([[
-				<p id="draw-this"><a href="%s/illustrate">
-					illustrate this
-				</a></p>
-			]]):format(p)
+--			draw_this = ([[
+--				<p id="draw-this"><a href="%s/illustrate">
+--					illustrate this
+--				</a></p>
+--			]]):format(p)
 		end
 
 		return base {
@@ -454,7 +454,8 @@ local illustrate_template = template [[
 	$content
 	<hr/>
 	<h2 id="what">what does this look like?</h2>
-	<form action="/g/$page" enctype="multipart/form-data" id="img-form">
+	<form method="POST" action="/g/$page/illustrate"
+			enctype="multipart/form-data" id="img-form">
 		<input
 			type="file"
 			name="file"
@@ -463,22 +464,22 @@ local illustrate_template = template [[
 		<input type="submit" value="submit image" />
 	</form>
 ]]
-map["^/g/(%w%w%w%w%w)/illustrate"] = function(p)
-	local page = load_page(p)
-	if not page then return not_found() end
-
-	if env "REQUEST_METHOD" ~= "POST" then
-		return base {
-			title = "illustration: " .. html_encode(page.title),
-			content = illustrate_template {
-				title = html_encode(page.title),
-				content = convert_markup(page.content),
-				page = p,
-			},
-		}
-	else
-	end
-end
+-- map["^/g/(%w%w%w%w%w)/illustrate"] = function(p)
+-- 	local page = load_page(p)
+-- 	if not page then return not_found() end
+-- 
+-- 	if env "REQUEST_METHOD" ~= "POST" then
+-- 		return base {
+-- 			title = "illustration: " .. html_encode(page.title),
+-- 			content = illustrate_template {
+-- 				title = html_encode(page.title),
+-- 				content = convert_markup(page.content),
+-- 				page = p,
+-- 			},
+-- 		}
+-- 	else
+-- 	end
+-- end
 
 map["^/i/(%w%w%w%w%w).(%w+)$"] = function(p, format)
 	local page = load_page(p)
