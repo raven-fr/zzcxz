@@ -280,7 +280,7 @@ grge {
 pre {
 	background-color: white;
 	padding: 10px;
-	overflow-x: scroll;
+	overflow-x: hidden;
 }
 
 pre > code {
