@@ -119,7 +119,7 @@ local base = template [[
 		<h1>zzcxz</h1>
 		<main>$content</main>
 		<footer>
-			<div id="about-links">
+			<div class="links">
 				<p><a href="/">back to start</a></p>
 				<p><a href="/about">help</a></p>
 				<p><a href="https://citrons.xyz/git/zzcxz.git/about">
@@ -221,6 +221,8 @@ local function parse_page(s)
 	for line in (s..'\n'):gmatch "(.-\n)" do
 		if line:sub(1,1) == '\t' then
 			table.insert(content, line:sub(2))
+		elseif line == "!image" then
+			page.illustrated = true
 		else
 			local target, action = line:match "^(%w%w%w%w%w):(.-)\n$"
 			if action then
@@ -292,10 +294,15 @@ local map = {}
 
 local page_template = template [[
 	<h2>$title</h2>
+	$illustration
 	$content
+	$drawthis
 	<ul class="actions">
 	$actions
 	</ul>
+]]
+local draw_this = [[
+	<p id="draw-this"><a href="$page/illustrate">illustrate this</a></p>
 ]]
 map["^/g/(%w%w%w%w%w)$"] = function(p)
 	local page = load_page(p)
@@ -318,12 +325,28 @@ map["^/g/(%w%w%w%w%w)$"] = function(p)
 			)
 		end
 
+		local illustration, draw_this
+		if page.illustrated then
+			illustration = ([[
+				<img class="illustration" src="/i/%s.png" />
+			]]):format(p)
+		else
+			draw_this = ([[
+				<p id="draw-this"><a href="%s/illustrate">
+					illustrate this
+				</a></p>
+			]]):format(p)
+		end
+
 		return base {
 			title = html_encode(page.title),
 			content = page_template {
 				title = html_encode(page.title),
 				content = convert_markup(page.content),
 				actions = table.concat(actions),
+				page = p,
+				illustration = illustration,
+				drawthis = draw_this,
 			},
 		}
 	else
@@ -423,6 +446,37 @@ map["^/g/(%w%w%w%w%w)/act$"] = function(p)
 				submit = submit_template { page = p },
 			},
 		}
+	end
+end
+
+local illustrate_template = template [[
+	<h2>$title</h2>
+	$content
+	<hr/>
+	<h2 id="what">what does this look like?</h2>
+	<form action="/g/$page" enctype="multipart/form-data" id="img-form">
+		<input
+			type="file"
+			name="file"
+			accept="image/png,image/jpeg,image/gif"
+		/>
+		<input type="submit" value="submit image" />
+	</form>
+]]
+map["^/g/(%w%w%w%w%w)/illustrate"] = function(p)
+	local page = load_page(p)
+	if not page then return not_found() end
+
+	if env "REQUEST_METHOD" ~= "POST" then
+		return base {
+			title = "illustration: " .. html_encode(page.title),
+			content = illustrate_template {
+				title = html_encode(page.title),
+				content = convert_markup(page.content),
+				page = p,
+			},
+		}
+	else
 	end
 end
 
