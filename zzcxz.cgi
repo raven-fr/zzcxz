@@ -358,7 +358,7 @@ map["^/g/(%w%w%w%w%w)$"] = function(p)
 		if #hist > 25 then
 			table.remove(hist, 1)
 		end
-		local hist_cookie = ('history=%s; path=/; max-age=99999999999')
+		local hist_cookie = ('history=%s; path=/; secure; max-age=99999999999')
 			:format(table.concat(hist, ',')..',')
 
 		return base {
@@ -400,6 +400,7 @@ local edit_template = template [[
 	$content
 	<hr id="what"/>
 	$preview
+	$log
 	<form method="POST">
 		<p>
 			<a href="/about#rules">READ THIS</a> before touching anything.
