@@ -567,7 +567,7 @@ end
 
 map["^/$"] = function()
 	if #history > 0 then
-		return redirect('/g/'..hist[#hist])
+		return redirect('/g/'..history[#history])
 	else
 		return redirect '/g/zzcxz'
 	end
