@@ -93,6 +93,12 @@ local function parse_qs(str,sep)
 end
 
 local cookies = env "HTTP_COOKIE" and parse_qs(env "HTTP_COOKIE","; ") or {}
+local history = {}
+if cookies.history then
+	for page in cookies.history:gmatch "(%w%w%w%w%w)%," do
+		table.insert(history, page)
+	end
+end
 
 local function redirect(to)
 	return "", {
@@ -293,14 +299,37 @@ local function new_action(page, action, result)
 	return new_name
 end
 
-local function get_history()
-	if not cookies.history then return {} end
+local hist_template = template [[
+	<details class="hist-log">
+		<summary>log</summary>
+		<ul>
+			$log
+		</ul>
+	</details>
+]]
+local function show_hist(show_ids)
+	local log = {}
+	if #history == 0 then return "" end
 
-	local history = {}
-	for page in cookies.history:gmatch "(%w%w%w%w%w)%," do
-		table.insert(history, page)
+	for i=#history,1,-1 do
+		local page = load_page(history[i])
+		if not page then goto continue end
+
+		-- highlight the current page
+		local title = i ~= #history and html_encode(page.title)
+			or '<strong>'..html_encode(page.title)..'</strong>'
+		if show_ids then
+			table.insert(log,
+				('<li>%s <span class="page-id">%s</span></li>')
+					:format(title, history[i]))
+		else
+			table.insert(log, ('<li>%s</li>'):format(title))
+		end
+		::continue::
 	end
-	return history
+	return hist_template {
+		log = table.concat(log),
+	}
 end
 
 local map = {}
@@ -313,6 +342,7 @@ local page_template = template [[
 	<ul class="actions">
 	$actions
 	</ul>
+	$log
 ]]
 local draw_this = [[
 	<p id="draw-this"><a href="$page/illustrate">illustrate this</a></p>
@@ -323,6 +353,13 @@ map["^/g/(%w%w%w%w%w)$"] = function(p)
 	local _, directives = convert_markup(page.content)
 
 	if env "REQUEST_METHOD" ~= "POST" then
+		if history[#history] ~= p then
+			table.insert(history, p)
+		end
+		if #history > 75 then
+			table.remove(history, 1)
+		end
+
 		local actions = {}
 		for _,a in ipairs(page.actions) do
 			table.insert(actions,
@@ -351,15 +388,8 @@ map["^/g/(%w%w%w%w%w)$"] = function(p)
 --			]]):format(p)
 		end
 
-		local hist = get_history()
-		if hist[#hist] ~= p then
-			table.insert(hist, p)
-		end
-		if #hist > 25 then
-			table.remove(hist, 1)
-		end
-		local hist_cookie = ('history=%s; path=/; secure; max-age=99999999999')
-			:format(table.concat(hist, ',')..',')
+		local hist_cookie = ('history=%s; path=/; max-age=99999999999')
+			:format(table.concat(history, ',')..',')
 
 		return base {
 			title = html_encode(page.title),
@@ -370,6 +400,7 @@ map["^/g/(%w%w%w%w%w)$"] = function(p)
 				page = p,
 				illustration = illustration,
 				drawthis = draw_this,
+				log = show_hist(),
 			},
 		}, { headers = { ['set-cookie'] = hist_cookie } }
 	else
@@ -400,7 +431,6 @@ local edit_template = template [[
 	$content
 	<hr id="what"/>
 	$preview
-	$log
 	<form method="POST">
 		<p>
 			<a href="/about#rules">READ THIS</a> before touching anything.
@@ -422,6 +452,7 @@ local edit_template = template [[
 			<input type="submit" formaction="act#what" value="preview" />
 			$submit
 		</div>
+		$log
 	</form>
 ]]
 local preview_template = template [[
@@ -445,6 +476,7 @@ map["^/g/(%w%w%w%w%w)/act$"] = function(p)
 			content = edit_template {
 				page = p,
 				content = convert_markup(page.content),
+				log = show_hist(true),
 			},
 		}
 	else
@@ -468,6 +500,7 @@ map["^/g/(%w%w%w%w%w)/act$"] = function(p)
 				title = html_encode(form.wyd),
 				editing = html_encode(form.happens),
 				submit = submit_template { page = p },
+				log = show_hist(true),
 			},
 		}
 	end
