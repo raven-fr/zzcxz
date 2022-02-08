@@ -388,7 +388,7 @@ map["^/g/(%w%w%w%w%w)$"] = function(p)
 --			]]):format(p)
 		end
 
-		local hist_cookie = ('history=%s; path=/; secure; max-age=99999999999')
+		local hist_cookie = ('history=%s; path=/; max-age=99999999999')
 			:format(table.concat(history, ',')..',')
 
 		return base {
@@ -566,8 +566,7 @@ map["^/robots.txt$"] = function()
 end
 
 map["^/$"] = function()
-	local hist = get_history()
-	if #hist > 0 then
+	if #history > 0 then
 		return redirect('/g/'..hist[#hist])
 	else
 		return redirect '/g/zzcxz'
