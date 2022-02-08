@@ -388,7 +388,7 @@ map["^/g/(%w%w%w%w%w)$"] = function(p)
 --			]]):format(p)
 		end
 
-		local hist_cookie = ('history=%s; path=/; max-age=99999999999')
+		local hist_cookie = ('history=%s; path=/; secure; max-age=99999999999')
 			:format(table.concat(history, ',')..',')
 
 		return base {
