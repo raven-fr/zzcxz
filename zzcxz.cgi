@@ -33,7 +33,8 @@ local function html_encode(x)
 	return escaped
 end
 
-local function parse_qs(str)
+local function parse_qs(str,sep)
+	sep = sep or '&'
 	local function decode(str, path)
 		local str = str
 		if not path then
@@ -45,7 +46,7 @@ local function parse_qs(str)
 	end
 
 	local values = {}
-	for key,val in str:gmatch(string.format('([^%q=]+)(=*[^%q=]*)', '&', '&')) do
+	for key,val in str:gmatch(string.format('([^%q=]+)(=*[^%q=]*)', sep, sep)) do
 		local key = decode(key)
 		local keys = {}
 		key = key:gsub('%[([^%]]*)%]', function(v)
@@ -91,6 +92,8 @@ local function parse_qs(str)
 	return values
 end
 
+local cookies = env "HTTP_COOKIE" and parse_qs(env "HTTP_COOKIE","; ") or {}
+
 local function redirect(to)
 	return "", {
 		status = '303 see other',
@@ -120,7 +123,7 @@ local base = template [[
 		<main>$content</main>
 		<footer>
 			<div class="links">
-				<p><a href="/">back to start</a></p>
+				<p><a href="/g/zzcxz">back to start</a></p>
 				<p><a href="/about">help</a></p>
 				<p><a href="https://citrons.xyz/git/zzcxz.git/about">
 					source code
@@ -290,6 +293,16 @@ local function new_action(page, action, result)
 	return new_name
 end
 
+local function get_history()
+	if not cookies.history then return {} end
+
+	local history = {}
+	for page in cookies.history:gmatch "(%w%w%w%w%w)%," do
+		table.insert(history, page)
+	end
+	return history
+end
+
 local map = {}
 
 local page_template = template [[
@@ -338,6 +351,16 @@ map["^/g/(%w%w%w%w%w)$"] = function(p)
 --			]]):format(p)
 		end
 
+		local hist = get_history()
+		if hist[#hist] ~= p then
+			table.insert(hist, p)
+		end
+		if #hist > 25 then
+			table.remove(hist, 1)
+		end
+		local hist_cookie = ('history=%s; path=/; max-age=99999999999')
+			:format(table.concat(hist, ',')..',')
+
 		return base {
 			title = html_encode(page.title),
 			content = page_template {
@@ -348,7 +371,7 @@ map["^/g/(%w%w%w%w%w)$"] = function(p)
 				illustration = illustration,
 				drawthis = draw_this,
 			},
-		}
+		}, { headers = { ['set-cookie'] = hist_cookie } }
 	else
 		if directives.deadend then
 			return base {
@@ -508,11 +531,16 @@ map["^/robots.txt$"] = function()
 		{ content_type = 'text/plain' }
 end
 
-local function main()
-	if env "PATH_INFO" == "/" then
-		return redirect "/g/zzcxz"
+map["^/$"] = function()
+	local hist = get_history()
+	if #hist > 0 then
+		return redirect('/g/'..hist[#hist])
+	else
+		return redirect '/g/zzcxz'
 	end
+end
 
+local function main()
 	for k,v in pairs(map) do
 		local m = {(env "PATH_INFO"):match(k)}
 		if m[1] then
