@@ -292,6 +292,10 @@ grge {
 	content: "→ ";
 }
 
+.hist-log > ul > li > strong {
+	color: white;
+}
+
 .page-id {
 	color: lightgrey;
 	font-style: italic;
