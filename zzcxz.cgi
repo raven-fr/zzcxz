@@ -562,7 +562,10 @@ map["^/g/(%w%w%w%w%w)/raw$"] = function(p)
 	local page = load_page(p, true)
 	if not page then return not_found() end
 
-	return page, { content_type = 'text/plain' }
+	return page, {
+		content_type = 'text/plain',
+		headers = { ['access-control-allow-origin'] = "*" }
+	}
 end
 
 map["^/about/?$"] = function()
