@@ -211,14 +211,6 @@ local function convert_markup(m)
 		code_block = false
 	end
 
-	if directives.redirect then
-		local r = directives.redirect
-		return (
-			'<p class="note">this action will link to ' ..
-			'<a href="/g/%s" target="_blank">%s</a>.</p>'
-		):format(r, r), directives
-	end
-
 	return table.concat(result), directives
 end
 
@@ -485,6 +477,22 @@ map["^/g/(%w%w%w%w%w)/act$"] = function(p)
 		form.happens = form.happens or "something"
 
 		local prev, prev_direct = convert_markup(form.happens)
+
+		local prev_title =
+			prev_direct.title and html_encode(prev_direct.title) or
+				html_encode(form.wyd)
+
+		if prev_direct.redirect then
+			local redirect_page = load_page(prev_direct.redirect)
+			if redirect_page then
+				local note =
+					('<span class="note">previewing %s</span>')
+						:format(prev_direct.redirect)
+				prev = note..convert_markup(redirect_page.content)
+			else
+				prev = '<span class="note">invalid redirect!</span>'
+			end
+		end
 		
 		return base {
 			title = "do something new",
@@ -492,9 +500,7 @@ map["^/g/(%w%w%w%w%w)/act$"] = function(p)
 				page = p,
 				content = convert_markup(page.content),
 				preview = preview_template {
-					title =
-						prev_direct.title and html_encode(prev_direct.title)
-						or html_encode(form.wyd),
+					title = prev_title,
 					content = prev,
 				},
 				title = html_encode(form.wyd),
