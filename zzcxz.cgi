@@ -374,8 +374,10 @@ map["^/g/(%w%w%w%w%w)$"] = function(p)
 		if not directives.deadend then
 			table.insert(actions,
 				([[
-					<li><a class="important" href="%s/act#what">%s</a></li>
-				]]):format(page.id, #page.actions == 0 and
+					<li>
+						<a class="important" href="%s/act?back=%s#what">%s</a>
+					</li>
+				]]):format(page.id, p, #page.actions == 0 and
 					"do something..." or "do something else...")
 			)
 		end
@@ -452,8 +454,8 @@ local edit_template = template [[
 			maxlength="10000" required
 		>$editing</textarea>
 		<div class="buttons">
-			<a href="../$page">cancel</a>
-			<input type="submit" formaction="act#what" value="preview" />
+			<a href="$cancel">cancel</a>
+			<input type="submit" value="preview" />
 			$submit
 		</div>
 		$log
@@ -474,6 +476,9 @@ map["^/g/(%w%w%w%w%w)/act$"] = function(p)
 	local _, directives = convert_markup(page.content)
 	if directives.deadend then return not_found() end
 
+	local query = parse_qs(env "QUERY_STRING" or "")
+	local cancel = '/g/'..(query.back or p)
+
 	if env "REQUEST_METHOD" ~= "POST" then
 		return base {
 			title = "do something new",
@@ -481,6 +486,7 @@ map["^/g/(%w%w%w%w%w)/act$"] = function(p)
 				page = p,
 				content = convert_markup(page.content),
 				log = show_hist(true),
+				cancel = html_encode(cancel),
 			},
 		}
 	else
@@ -500,7 +506,7 @@ map["^/g/(%w%w%w%w%w)/act$"] = function(p)
 					:format(prev_direct.redirect.id)
 			prev = note..prev
 		end
-		
+
 		return base {
 			title = "do something new",
 			content = edit_template {
@@ -513,6 +519,7 @@ map["^/g/(%w%w%w%w%w)/act$"] = function(p)
 				title = html_encode(form.wyd),
 				editing = html_encode(form.happens),
 				submit = submit_template { page = p },
+				cancel = html_encode(cancel),
 				log = show_hist(true),
 			},
 		}
