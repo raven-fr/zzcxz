@@ -40,9 +40,10 @@ local function parse_qs(str,sep)
 		if not path then
 			str = str:gsub('+', ' ')
 		end
-		return (str:gsub("%%(%x%x)", function(c)
+		str = str:gsub("%%(%x%x)", function(c)
 				return string.char(tonumber(c, 16))
-		end))
+		end)
+		return (str:gsub('\r\n', '\n'))
 	end
 
 	local values = {}
