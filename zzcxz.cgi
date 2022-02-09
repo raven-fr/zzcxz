@@ -298,12 +298,9 @@ local function new_action(page, action, result)
 end
 
 local hist_template = template [[
-	<details class="hist-log">
-		<summary>log</summary>
-		<ul>
-			$log
-		</ul>
-	</details>
+	<ul class="hist-log">
+		$log
+	</ul>
 ]]
 local function show_hist(show_ids)
 	local log = {}

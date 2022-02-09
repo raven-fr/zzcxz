@@ -59,7 +59,7 @@ li {
 
 footer {
 	border-top: 2px solid white;
-	margin-top: 50px;
+	margin-top: 20px;
 	padding-bottom: 50px;
 	font-size: smaller;
 	font-style: italic;
@@ -273,26 +273,28 @@ grge {
 	flex-wrap: wrap;
 }
 
-.hist-log > ul {
+.hist-log {
 	padding: 10px;
 	border-radius: 10px;
 	font-family: monospace;
 	overflow-y: scroll;
 	overflow-x: hidden;
-	height: 190px;
+	height: 85px;
 	background-color: black;
 	font-size: larger;
+	margin-top: 20px;
+	margin-bottom: 20px;
 }
 
-.hist-log > ul > li {
+.hist-log > li {
 	list-style: none;
 }
 
-.hist-log > ul > li:before {
+.hist-log > li:before {
 	content: "→ ";
 }
 
-.hist-log > ul > li > strong {
+.hist-log > li > strong {
 	color: white;
 }
 
