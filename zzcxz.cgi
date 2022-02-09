@@ -154,10 +154,6 @@ local function parse_directive(line, directives)
 	directive = directive and directive:lower()
 	if not directive then
 		return
-	elseif directive == "pagetitle" then
-		if args:match "^%s*$" then return end
-		if utf8.len(args) > 150 then return end
-		directives.title = args
 	elseif directive == "redirect" then
 		local redirect = args:match "^%s*(%w%w%w%w%w)%s*$"
 		if not redirect then return end
@@ -180,7 +176,21 @@ local function convert_markup(m)
 			end
 			if line:sub(1,1) == '#' and
 					parse_directive(line, directives) then
-				goto continue
+				if directives.redirect then
+					local to = load_page(directives.redirect)
+					if to then
+						local m, d = convert_markup(to.content)
+						-- the final destination will not have a redirect
+						-- value in this directive. as such, this will store
+						-- final destination of a chain of redirects.
+						d.redirect = d.redirect or to
+						return m, d
+					else
+						directives.redirect = nil
+					end
+				else
+					goto continue
+				end
 			end
 
 			line = html_encode(line)
@@ -244,18 +254,13 @@ function load_page(p, raw)
 	f:close()
 	if not s then return nil end
 	if raw then return s end
-	return parse_page(s)
+	local page = parse_page(s)
+	page.id = p
+	return page
 end
 
 local function new_action(page, action, result)
 	local _, directives = convert_markup(result)
-	local old = assert(io.open('content/'..page, 'a'))
-
-	if directives.redirect then
-		assert(old:write(('%s:%s\n'):format(directives.redirect, action)))
-		old:close()
-		return directives.redirect
-	end
 
 ::generate_name::
 	local new_name = {}
@@ -270,10 +275,11 @@ local function new_action(page, action, result)
 		goto generate_name
 	end
 
+	local old = assert(io.open('content/'..page, 'a'))
 	local new = assert(io.open('content/'..new_name, 'w'))
 
 	action = action:gsub('\n', ' ')
-	assert(new:write((directives.title or action)..'\n'))
+	assert(new:write(action..'\n'))
 	for line in (result..'\n'):gmatch "(.-\n)" do
 		assert(new:write('\t' .. line))
 	end
@@ -342,7 +348,7 @@ local draw_this = [[
 map["^/g/(%w%w%w%w%w)$"] = function(p)
 	local page = load_page(p)
 	if not page then return not_found() end
-	local _, directives = convert_markup(page.content)
+	local content, directives = convert_markup(page.content)
 
 	if env "REQUEST_METHOD" ~= "POST" then
 		if history[#history] ~= p then
@@ -350,6 +356,12 @@ map["^/g/(%w%w%w%w%w)$"] = function(p)
 		end
 		if #history > 75 then
 			table.remove(history, 1)
+		end
+
+		local title = page.title
+
+		if directives.redirect then
+			page = directives.redirect
 		end
 
 		local actions = {}
@@ -362,7 +374,7 @@ map["^/g/(%w%w%w%w%w)$"] = function(p)
 			table.insert(actions,
 				([[
 					<li><a class="important" href="%s/act#what">%s</a></li>
-				]]):format(p, #page.actions == 0 and
+				]]):format(page.id, #page.actions == 0 and
 					"do something..." or "do something else...")
 			)
 		end
@@ -371,7 +383,7 @@ map["^/g/(%w%w%w%w%w)$"] = function(p)
 		if page.illustration then
 			illustration = ([[
 				<img class="illustration" src="/i/%s.%s" />
-			]]):format(p, page.illustration)
+			]]):format(page.id, page.illustration)
 		else
 --			draw_this = ([[
 --				<p id="draw-this"><a href="%s/illustrate">
@@ -384,12 +396,11 @@ map["^/g/(%w%w%w%w%w)$"] = function(p)
 			:format(table.concat(history, ',')..',')
 
 		return base {
-			title = html_encode(page.title),
+			title = html_encode(title),
 			content = page_template {
-				title = html_encode(page.title),
-				content = convert_markup(page.content),
+				title = html_encode(title),
+				content = content,
 				actions = table.concat(actions),
-				page = p,
 				illustration = illustration,
 				drawthis = draw_this,
 				log = show_hist(),
@@ -483,15 +494,10 @@ map["^/g/(%w%w%w%w%w)/act$"] = function(p)
 				html_encode(form.wyd)
 
 		if prev_direct.redirect then
-			local redirect_page = load_page(prev_direct.redirect)
-			if redirect_page then
-				local note =
-					('<span class="note">previewing %s</span>')
-						:format(prev_direct.redirect)
-				prev = note..convert_markup(redirect_page.content)
-			else
-				prev = '<span class="note">invalid redirect!</span>'
-			end
+			local note =
+				('<span class="note">previewing %s</span>')
+					:format(prev_direct.redirect.id)
+			prev = note..prev
 		end
 		
 		return base {
