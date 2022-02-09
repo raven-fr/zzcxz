@@ -199,7 +199,7 @@ local function convert_markup(m)
 				table.insert(result, '<pre><code>')
 				code_block = true
 			else
-				line = line:gsub("\\\\([%[%]])", "&#92;%1")
+				line = line:gsub("\\\\([%[%]\\])", "&#92;%1")
 				line = line:gsub("\\([%[%]])", 
 					{ ['['] = "&#91;", [']'] = "&#93;" })
 				line = line:gsub("%[(.-)%]",
