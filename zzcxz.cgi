@@ -289,6 +289,10 @@ local function new_action(page, action, result)
 	end
 	assert(old:write(('%s:%s\n'):format(new_name, action)))
 
+	if env "REMOTE_ADDR" then
+		new:write(('!ip %s\n'):format(env "REMOTE_ADDR"))
+	end
+
 	if directives.backlinks then
 		for _,d in ipairs(directives.backlinks) do
 			assert(new:write(('%s:%s\n'):format(d.page, d.action)))
@@ -572,6 +576,8 @@ end
 map["^/g/(%w%w%w%w%w)/raw$"] = function(p)
 	local page = load_page(p, true)
 	if not page then return not_found() end
+
+	page = page:gsub("\n!ip [^\n]*", "")
 
 	return page, {
 		content_type = 'text/plain',
