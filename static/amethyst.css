@@ -316,3 +316,15 @@ pre {
 pre > code {
 	color: black;
 }
+
+main.index {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	justify-content: center;
+}
+
+.index .logo {
+	min-width: 25%;
+	max-width: 50%;
+}

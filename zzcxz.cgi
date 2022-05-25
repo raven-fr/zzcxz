@@ -130,7 +130,7 @@ local base = template [[
 		<main>$content</main>
 		<footer>
 			<div class="links">
-				<p><a href="/g/zzcxz">back to start</a></p>
+				<p><a href="/">zzcxz</a></p>
 				<p><a href="/about">help</a></p>
 				<p><a href="https://citrons.xyz/git/zzcxz.git/about">
 					source code
@@ -585,6 +585,14 @@ map["^/g/(%w%w%w%w%w)/raw$"] = function(p)
 	}
 end
 
+map["^/g/?$"] = function()
+	if #history > 0 then
+		return redirect('/g/'..history[#history])
+	else
+		return redirect '/g/zzcxz'
+	end
+end
+
 map["^/about/?$"] = function()
 	return assert(io.open("about.html", 'r'))
 end
@@ -594,12 +602,35 @@ map["^/robots.txt$"] = function()
 		{ content_type = 'text/plain' }
 end
 
+local index_template = template [[
+<!doctype html>
+<html>
+	<head>
+		<link rel="stylesheet" href="/static/amethyst.css" />
+		<meta charset="utf-8" />
+		<title>zzcxz</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+	</head>
+	<body>
+		<main class="index">
+			<img class="logo" src="/static/zzcxz.png" alt="zzcxz" />
+			<ul class="actions">
+				$actions
+				<li><a href="/about">help</a></li>
+			</ul>
+		</main>
+	</body>
+</html>
+]]
 map["^/$"] = function()
-	if #history > 0 then
-		return redirect('/g/'..history[#history])
-	else
-		return redirect '/g/zzcxz'
+	local last_page =
+		load_page(history[#history] or 'zzcxz') or load_page 'zzcxz'
+	local actions = ('<li><a href="/g/%s" class="important">%s</a></li>')
+		:format(last_page.id, html_encode(last_page.title))
+	if last_page.id ~= 'zzcxz' then
+		actions = actions .. '<li><a href="/g/zzcxz">reenter the zzcxz</a></li>'
 	end
+	return index_template {actions = actions}
 end
 
 local function main()
