@@ -610,6 +610,9 @@ local index_template = template [[
 		<meta charset="utf-8" />
 		<title>zzcxz</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<meta property="og:title" content="zzcxz" />
+		<meta property="og:description" content="the zzcxz is to be entered. do not believe what you read" />
+		<meta property="og:image" content="https://zzcxz.citrons.xyz/static/zzcxz.png" />
 	</head>
 	<body>
 		<main class="index">
