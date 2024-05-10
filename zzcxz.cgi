@@ -1,10 +1,4 @@
 #!/usr/bin/env lua5.3
--- this software is licensed under the terms of the GNU affero public license
--- v3 or later. view LICENSE.txt for more information.
-
--- if you host your own instance, please change the email address in the about
--- page and clearly distinguish your instance from https://zzcxz.citrons.xyz.
-
 local env = os.getenv
 
 local f = io.open("/dev/urandom", 'r')
@@ -132,10 +126,6 @@ local base = template [[
 			<div class="links">
 				<p><a href="/">zzcxz</a></p>
 				<p><a href="/about">help</a></p>
-				<p><a href="https://citrons.xyz/git/zzcxz.git/about">
-					source code
-				</a></p>
-				<p><a href="https://citrons.xyz">citrons.xyz</a></p>
 			</div>
 		</footer>
 	</body>
@@ -612,7 +602,6 @@ local index_template = template [[
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<meta property="og:title" content="zzcxz" />
 		<meta property="og:description" content="the zzcxz is to be entered. do not believe what you read" />
-		<meta property="og:image" content="https://zzcxz.citrons.xyz/static/zzcxz.png" />
 	</head>
 	<body>
 		<main class="index">
